@@ -70,6 +70,20 @@ python build.py
 Once compilation completes, the packaged executable will be available at:
 `dist/WoWFontReplacer.exe`
 
+### Automated Builds & Releases (GitHub Actions)
+
+This repository includes a GitHub Actions CI/CD workflow that builds and releases the standalone executable automatically for free:
+
+1. **How it works:** Whenever you push a git tag matching `v*` (e.g., `v1.0.0`) to GitHub, the workflow automatically runs.
+2. **Build Process:** A Windows Runner checkouts the repo, sets up Python, installs dependencies, downloads the required fonts, and compiles the executable.
+3. **Release:** A new GitHub Release is created for that tag, and the compiled `WoWFontReplacer.exe` is uploaded directly to the release page.
+
+To push a new release tag:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ---
 
 ## Licensing
