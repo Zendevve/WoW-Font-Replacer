@@ -86,6 +86,7 @@ GAME_VERSIONS = {
     "Retail": "_retail_",
     "Classic": "_classic_",
     "Classic Era": "_classic_era_",
+    "Private Server / Legacy": "",
 }
 
 # Design tokens
@@ -211,6 +212,8 @@ class FontManager:
     @staticmethod
     def get_fonts_dir(wow_path: str, version_subfolder: str) -> Path:
         """Return the Fonts directory path for a given WoW version."""
+        if not version_subfolder:
+            return Path(wow_path) / "Fonts"
         return Path(wow_path) / version_subfolder / "Fonts"
 
     @staticmethod
@@ -243,6 +246,14 @@ class FontManager:
         base = Path(wow_path)
         if not base.is_dir():
             return False, "WoW folder does not exist."
+
+        if not version_subfolder:
+            # For private servers, check for presence of wow.exe / Wow.exe / WowClassic.exe
+            exes = ["wow.exe", "Wow.exe", "WowClassic.exe", "wowclassic.exe"]
+            has_exe = any((base / exe).is_file() for exe in exes)
+            if not has_exe:
+                return False, "Could not find wow.exe or Wow.exe in the selected folder."
+            return True, "Valid Private Server folder."
 
         version_dir = base / version_subfolder
         if not version_dir.is_dir():

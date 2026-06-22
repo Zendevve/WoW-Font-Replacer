@@ -2,13 +2,14 @@
 
 WoW Font Replacer is a premium, dark-themed desktop application built using Python and CustomTkinter. It automates the process of swapping World of Warcraft's default fonts with high-legibility, open-source readability fonts or custom fonts of your choice.
 
-This utility supports all versions of WoW (Retail, Classic, and Classic Era) on Windows.
+This utility supports all versions of WoW (Retail, Classic, Classic Era, and Private / Legacy Servers) on Windows.
 
 ---
 
 ## Features
 
 - 🔍 **Auto-detect WoW Path:** Scans common Windows installation directories on startup.
+- ⚙️ **Private Server / Legacy Support:** Installs fonts directly to your root WoW folder (under a root `/Fonts/` folder) automatically verifying that `wow.exe` or `Wow.exe` is present in the chosen directory.
 - 📦 **Pre-packaged Readability Fonts:** Comes with four highly recommended, open-source legibility fonts ready to apply instantly:
   - **Lexend Regular:** Specifically designed to improve reading proficiency and reduce visual stress.
   - **OpenDyslexic Regular:** Designed with heavy-weighted bottoms to assist readers with dyslexia.
@@ -23,7 +24,7 @@ This utility supports all versions of WoW (Retail, Classic, and Classic Era) on 
 
 ## File Structure & WoW Naming Rules
 
-WoW expects specific, case-sensitive filenames inside a `Fonts/` folder in the game version directory. WoW Font Replacer handles all of this naming and directory management automatically:
+WoW expects specific, case-sensitive filenames inside a `Fonts/` folder (located in the game version directory for official WoW, or in the game's root directory for private servers). WoW Font Replacer handles all of this naming and directory management automatically:
 
 - **Friz Quadrata** (General UI, quest text, nameplates, etc.) &rarr; `FRIZQT__.ttf` (2 underscores)
 - **Morpheus** (Mail text, books, and quest titles) &rarr; `MORPHEUS.ttf`
