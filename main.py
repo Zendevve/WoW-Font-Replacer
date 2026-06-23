@@ -16,7 +16,7 @@ from tkinter import filedialog, font as tkfont
 from pathlib import Path
 
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 def get_config_path() -> str:
     """Return path to config.json file in the application directory."""
@@ -89,24 +89,24 @@ GAME_VERSIONS = {
     "Private Server / Legacy": "",
 }
 
-# Design tokens
+# Design tokens - Nike Commerce Design System Palette
 COLORS = {
-    "bg_dark":       "#0f0f1a",
-    "bg_card":       "#181830",
-    "bg_card_hover": "#1e1e3a",
-    "bg_input":      "#12122a",
-    "accent":        "#c4392f",
-    "accent_hover":  "#a83028",
-    "accent_gold":   "#d4a843",
-    "accent_gold_dim": "#a8863a",
-    "text_primary":  "#e8e6e3",
-    "text_secondary":"#7a7f96",
-    "text_muted":    "#4e5268",
-    "success":       "#3db87a",
-    "warning":       "#d4a843",
-    "error":         "#c4392f",
-    "border":        "#2a2a4a",
-    "border_light":  "#353560",
+    "bg_dark":          "#ffffff",          # Canvas (window background)
+    "bg_card":          "#f5f5f5",          # Soft Cloud (card background)
+    "bg_card_hover":    "#e5e5e5",          # Hairline Soft
+    "bg_input":         "#f5f5f5",          # Soft Cloud
+    "accent":           "#111111",          # Nike Black / Ink (Primary CTA)
+    "accent_hover":     "#39393b",          # Charcoal (Primary CTA hover)
+    "accent_gold":      "#111111",          # Replaced with Nike Black for titles
+    "accent_gold_dim":  "#707072",          # Replaced with Mute
+    "text_primary":     "#111111",          # Ink
+    "text_secondary":   "#39393b",          # Charcoal
+    "text_muted":       "#707072",          # Mute
+    "success":          "#007d48",          # Success Green
+    "warning":          "#1151ff",          # Info Blue
+    "error":            "#d30005",          # Sale Red / Error
+    "border":           "#cacacb",          # Hairline
+    "border_light":     "#e5e5e5",          # Hairline Soft
 }
 
 # Common WoW install locations to auto-detect
@@ -364,9 +364,8 @@ class FontSlotCard(ctk.CTkFrame):
         super().__init__(
             master,
             fg_color=COLORS["bg_card"],
-            corner_radius=12,
-            border_width=1,
-            border_color=COLORS["border"],
+            corner_radius=0,  # Zero radius for card containers in Nike system
+            border_width=0,
             **kwargs,
         )
 
@@ -376,27 +375,16 @@ class FontSlotCard(ctk.CTkFrame):
         self._preview_window = None
 
         # --- Header row ---
-        header_frame = ctk.CTkFrame(self, fg_color="transparent")
-        header_frame.pack(fill="x", padx=20, pady=(16, 0))
+        self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.header_frame.pack(fill="x", padx=20, pady=(16, 0))
 
-        # Accent bar
-        accent_bar = ctk.CTkFrame(
-            header_frame,
-            fg_color=COLORS["accent_gold"],
-            width=4,
-            height=40,
-            corner_radius=2,
-        )
-        accent_bar.pack(side="left", padx=(0, 12))
-        accent_bar.pack_propagate(False)
-
-        title_block = ctk.CTkFrame(header_frame, fg_color="transparent")
+        title_block = ctk.CTkFrame(self.header_frame, fg_color="transparent")
         title_block.pack(side="left", fill="x", expand=True)
 
         self.title_label = ctk.CTkLabel(
             title_block,
-            text=slot_info["display_name"],
-            font=ctk.CTkFont(family="Segoe UI", size=17, weight="bold"),
+            text=slot_info["display_name"].upper(),  # Uppercase display title style
+            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             text_color=COLORS["text_primary"],
             anchor="w",
         )
@@ -405,8 +393,8 @@ class FontSlotCard(ctk.CTkFrame):
         self.subtitle_label = ctk.CTkLabel(
             title_block,
             text=slot_info["subtitle"],
-            font=ctk.CTkFont(family="Segoe UI", size=12),
-            text_color=COLORS["accent_gold_dim"],
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=COLORS["text_muted"],
             anchor="w",
         )
         self.subtitle_label.pack(anchor="w")
@@ -446,11 +434,12 @@ class FontSlotCard(ctk.CTkFrame):
         self.status_label.pack(side="left", padx=(4, 0))
 
         # --- Buttons row ---
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=20, pady=(12, 16))
+        self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.btn_frame.pack(fill="x", padx=20, pady=(12, 16))
 
+        # OptionMenu styled as a perfect Nike pill CTA
         self.font_select = ctk.CTkOptionMenu(
-            btn_frame,
+            self.btn_frame,
             values=[
                 "Select font...",
                 "[Bundled] Lexend Regular",
@@ -460,45 +449,50 @@ class FontSlotCard(ctk.CTkFrame):
                 "Custom Font... (Browse)"
             ],
             width=230,
-            height=32,
-            corner_radius=8,
+            height=36,
+            corner_radius=18,  # Pill geometry
             fg_color=COLORS["accent"],
             button_color=COLORS["accent_hover"],
             button_hover_color=COLORS["accent_hover"],
-            dropdown_fg_color=COLORS["bg_card"],
-            dropdown_hover_color=COLORS["border"],
+            dropdown_fg_color="#ffffff",  # Canvas white dropdown
+            dropdown_hover_color=COLORS["bg_card_hover"],
             dropdown_text_color=COLORS["text_primary"],
-            text_color=COLORS["text_primary"],
+            text_color="#ffffff",
             font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=self._on_font_select,
         )
         self.font_select.pack(side="left", padx=(0, 8))
 
+        # Preview button styled as secondary white pill with gray border
         self.preview_btn = ctk.CTkButton(
-            btn_frame,
+            self.btn_frame,
             text="Preview",
             width=90,
-            height=32,
-            corner_radius=8,
-            fg_color=COLORS["border"],
-            hover_color=COLORS["border_light"],
-            font=ctk.CTkFont(family="Segoe UI", size=12),
+            height=36,
+            corner_radius=18,  # Pill geometry
+            fg_color="#ffffff",
+            text_color=COLORS["text_primary"],
+            border_width=1,
+            border_color=COLORS["border"],
+            hover_color=COLORS["bg_card_hover"],
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=self._preview_font,
             state="disabled",
         )
         self.preview_btn.pack(side="left", padx=(0, 8))
 
+        # Clear button styled as borderless transparent pill
         self.clear_btn = ctk.CTkButton(
-            btn_frame,
+            self.btn_frame,
             text="Clear",
             width=70,
-            height=32,
-            corner_radius=8,
+            height=36,
+            corner_radius=18,  # Pill geometry
             fg_color="transparent",
-            hover_color=COLORS["border"],
+            hover_color=COLORS["bg_card_hover"],
             border_width=1,
             border_color=COLORS["border"],
-            text_color=COLORS["text_secondary"],
+            text_color=COLORS["text_muted"],
             font=ctk.CTkFont(family="Segoe UI", size=12),
             command=self._clear_font,
             state="disabled",
@@ -506,14 +500,70 @@ class FontSlotCard(ctk.CTkFrame):
         self.clear_btn.pack(side="left")
 
         # --- Target filename badge ---
-        target_label = ctk.CTkLabel(
-            btn_frame,
+        self.target_label = ctk.CTkLabel(
+            self.btn_frame,
             text=f"  {slot_info['target']}",
             font=ctk.CTkFont(family="Consolas", size=11),
             text_color=COLORS["text_muted"],
             anchor="e",
         )
-        target_label.pack(side="right")
+        self.target_label.pack(side="right")
+
+        # Bind resize event to layout buttons responsively inside the card
+        self.bind("<Configure>", self._on_card_resize)
+
+    def _on_card_resize(self, event):
+        """Dynamically adapt card buttons layout depending on card width."""
+        width = event.width
+        if hasattr(self, "_last_card_width") and abs(self._last_card_width - width) < 15:
+            return
+        self._last_card_width = width
+        self._layout_widgets(width)
+
+    def _layout_widgets(self, width: int):
+        # Clear previous layout bindings
+        self.header_frame.pack_forget()
+        self.desc_label.pack_forget()
+        self.status_frame.pack_forget()
+        self.btn_frame.pack_forget()
+        
+        # Base stack
+        self.header_frame.pack(fill="x", padx=20, pady=(16, 0))
+        self.desc_label.pack(fill="x", padx=20, pady=(8, 0))
+        self.status_frame.pack(fill="x", padx=20, pady=(10, 0))
+        self.btn_frame.pack(fill="x", padx=20, pady=(12, 16))
+        
+        self.font_select.pack_forget()
+        self.preview_btn.pack_forget()
+        self.clear_btn.pack_forget()
+        self.target_label.pack_forget()
+        
+        self.font_select.grid_forget()
+        self.preview_btn.grid_forget()
+        self.clear_btn.grid_forget()
+        self.target_label.grid_forget()
+        
+        if width < 480:
+            # Multi-row layout inside narrow cards
+            self.btn_frame.columnconfigure(0, weight=1)
+            self.btn_frame.columnconfigure(1, weight=1)
+            
+            # Row 0: Selector Menu
+            self.font_select.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+            # Row 1: Preview (col 0), Clear (col 1)
+            self.preview_btn.grid(row=1, column=0, sticky="ew", padx=(0, 4))
+            self.clear_btn.grid(row=1, column=1, sticky="ew", padx=(4, 0))
+            # Row 2: Target Badge
+            self.target_label.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        else:
+            self.btn_frame.columnconfigure(0, weight=0)
+            self.btn_frame.columnconfigure(1, weight=0)
+            
+            # Standard single row layout for wide cards
+            self.font_select.pack(side="left", padx=(0, 8))
+            self.preview_btn.pack(side="left", padx=(0, 8))
+            self.clear_btn.pack(side="left")
+            self.target_label.pack(side="right")
 
     def _on_font_select(self, val: str):
         """Handle font selection from dropdown."""
@@ -595,15 +645,15 @@ class FontSlotCard(ctk.CTkFrame):
         preview.title(f"Preview — {os.path.basename(self.source_path)}")
         preview.geometry("560x420")
         preview.resizable(False, False)
-        preview.configure(fg_color=COLORS["bg_dark"])
+        preview.configure(fg_color=COLORS["bg_dark"])  # White Canvas
         self._preview_window = preview
 
         # Header
         header = ctk.CTkLabel(
             preview,
-            text=f"Previewing: {os.path.basename(self.source_path)}",
+            text=f"PREVIEWING: {os.path.basename(self.source_path).upper()}",
             font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
-            text_color=COLORS["accent_gold"],
+            text_color=COLORS["accent"],  # Ink Black
         )
         header.pack(pady=(20, 4))
 
@@ -619,10 +669,9 @@ class FontSlotCard(ctk.CTkFrame):
         # Sample text container
         sample_frame = ctk.CTkFrame(
             preview,
-            fg_color=COLORS["bg_card"],
-            corner_radius=12,
-            border_width=1,
-            border_color=COLORS["border"],
+            fg_color=COLORS["bg_card"],  # Soft Cloud
+            corner_radius=0,             # Flat container
+            border_width=0,
         )
         sample_frame.pack(fill="both", expand=True, padx=24, pady=(4, 20))
 
@@ -696,34 +745,36 @@ class FontSlotCard(ctk.CTkFrame):
         dialog.title("Invalid Font File")
         dialog.geometry("400x160")
         dialog.resizable(False, False)
-        dialog.configure(fg_color=COLORS["bg_dark"])
+        dialog.configure(fg_color=COLORS["bg_dark"])  # Canvas White
         dialog.grab_set()
 
         ctk.CTkLabel(
             dialog,
-            text="Invalid Font File",
-            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
-            text_color=COLORS["error"],
+            text="INVALID FONT FILE",
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            text_color=COLORS["error"],  # Sale Red
         ).pack(pady=(24, 8))
 
         ctk.CTkLabel(
             dialog,
             text=message,
             font=ctk.CTkFont(family="Segoe UI", size=12),
-            text_color=COLORS["text_secondary"],
+            text_color=COLORS["text_secondary"],  # Charcoal
             wraplength=360,
         ).pack(pady=(0, 16))
 
         ctk.CTkButton(
             dialog,
             text="OK",
-            width=80,
-            height=32,
-            corner_radius=8,
-            fg_color=COLORS["accent"],
+            width=90,
+            height=36,
+            corner_radius=18,  # Pill geometry
+            fg_color=COLORS["accent"],  # Ink Black
             hover_color=COLORS["accent_hover"],
+            text_color="#ffffff",
             command=dialog.destroy,
         ).pack()
+
 
 
 # ---------------------------------------------------------------------------
@@ -742,7 +793,7 @@ class WoWFontReplacer(ctk.CTk):
         self.minsize(750, 700)
         self.configure(fg_color=COLORS["bg_dark"])
 
-        ctk.set_appearance_mode("dark")
+        ctk.set_appearance_mode("light")  # Light mode to adopt the Nike clean canvas look
         ctk.set_default_color_theme("blue")
 
         # Try to set window icon (optional)
@@ -762,6 +813,9 @@ class WoWFontReplacer(ctk.CTk):
         else:
             self._on_version_change()
 
+        # Bind resize event for responsive layouts
+        self.bind("<Configure>", self._on_resize)
+
         # Handle window close event to save settings
         self.protocol("WM_DELETE_WINDOW", self._on_window_close)
 
@@ -780,50 +834,32 @@ class WoWFontReplacer(ctk.CTk):
 
         container = self.main_scroll
 
-        # ===================== HEADER =====================
+        # ===================== EDITORIAL HEADER =====================
+        # Towers over the content in an athletic editorial style, no image
         header_frame = ctk.CTkFrame(container, fg_color="transparent")
-        header_frame.pack(fill="x", padx=28, pady=(24, 0))
-
-        # Title with decorative element
-        title_row = ctk.CTkFrame(header_frame, fg_color="transparent")
-        title_row.pack(fill="x")
-
-        sword_label = ctk.CTkLabel(
-            title_row,
-            text="\u2694",
-            font=ctk.CTkFont(size=28),
-            text_color=COLORS["accent_gold"],
-        )
-        sword_label.pack(side="left", padx=(0, 10))
+        header_frame.pack(fill="x", padx=28, pady=(32, 12))
 
         title_label = ctk.CTkLabel(
-            title_row,
-            text="WoW Font Replacer",
-            font=ctk.CTkFont(family="Segoe UI", size=26, weight="bold"),
-            text_color=COLORS["text_primary"],
-        )
-        title_label.pack(side="left")
-
-        version_label = ctk.CTkLabel(
-            title_row,
-            text="v1.0",
-            font=ctk.CTkFont(family="Segoe UI", size=11),
-            text_color=COLORS["text_muted"],
-        )
-        version_label.pack(side="left", padx=(8, 0), pady=(8, 0))
-
-        subtitle = ctk.CTkLabel(
             header_frame,
-            text="Replace default fonts for better readability or a custom look",
-            font=ctk.CTkFont(family="Segoe UI", size=13),
-            text_color=COLORS["text_secondary"],
+            text="WOW FONT REPLACER",
+            font=ctk.CTkFont(family="Impact", size=48), # clean towering uppercase
+            text_color=COLORS["text_primary"],
             anchor="w",
         )
-        subtitle.pack(anchor="w", pady=(4, 0))
+        title_label.pack(anchor="w")
 
-        # Thin divider
+        subtitle_label = ctk.CTkLabel(
+            header_frame,
+            text="REPLACE DEFAULT WORLD OF WARCRAFT FONTS FOR BETTER READABILITY AND STYLE",
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text_color=COLORS["text_muted"],
+            anchor="w",
+        )
+        subtitle_label.pack(anchor="w", pady=(4, 0))
+
+        # Spacing rhythm matching {spacing.section} (48px)
         divider = ctk.CTkFrame(container, fg_color=COLORS["border"], height=1)
-        divider.pack(fill="x", padx=28, pady=(16, 0))
+        divider.pack(fill="x", padx=28, pady=(20, 0))
 
         # ===================== PATH SECTION =====================
         path_section = ctk.CTkFrame(container, fg_color="transparent")
@@ -831,21 +867,21 @@ class WoWFontReplacer(ctk.CTk):
 
         path_label = ctk.CTkLabel(
             path_section,
-            text="WoW Installation Path",
+            text="WoW Installation Path".upper(),  # Editorial uppercase label
             font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
             text_color=COLORS["text_primary"],
             anchor="w",
         )
         path_label.pack(anchor="w", pady=(0, 6))
 
-        path_row = ctk.CTkFrame(path_section, fg_color="transparent")
-        path_row.pack(fill="x")
+        self.path_row = ctk.CTkFrame(path_section, fg_color="transparent")
+        self.path_row.pack(fill="x")
 
         self.path_entry = ctk.CTkEntry(
-            path_row,
+            self.path_row,
             placeholder_text="Browse to your World of Warcraft folder...",
             height=38,
-            corner_radius=8,
+            corner_radius=19,  # perfect pill shape (height 38)
             fg_color=COLORS["bg_input"],
             border_color=COLORS["border"],
             text_color=COLORS["text_primary"],
@@ -854,18 +890,19 @@ class WoWFontReplacer(ctk.CTk):
         )
         self.path_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
 
-        browse_btn = ctk.CTkButton(
-            path_row,
+        self.browse_btn = ctk.CTkButton(
+            self.path_row,
             text="Browse",
             width=90,
             height=38,
-            corner_radius=8,
-            fg_color=COLORS["border"],
-            hover_color=COLORS["border_light"],
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            corner_radius=19,  # perfect pill shape
+            fg_color=COLORS["accent"],  # Ink Black
+            hover_color=COLORS["accent_hover"],
+            text_color="#ffffff",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
             command=self._browse_path,
         )
-        browse_btn.pack(side="right")
+        self.browse_btn.pack(side="right")
 
         # ===================== VERSION SELECTOR =====================
         version_section = ctk.CTkFrame(container, fg_color="transparent")
@@ -873,32 +910,34 @@ class WoWFontReplacer(ctk.CTk):
 
         version_label = ctk.CTkLabel(
             version_section,
-            text="Game Version",
+            text="Game Version".upper(),
             font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
             text_color=COLORS["text_primary"],
             anchor="w",
         )
         version_label.pack(anchor="w", pady=(0, 8))
 
-        version_row = ctk.CTkFrame(version_section, fg_color="transparent")
-        version_row.pack(anchor="w")
+        self.version_row = ctk.CTkFrame(version_section, fg_color="transparent")
+        self.version_row.pack(anchor="w")
 
         self.version_var = ctk.StringVar(value="Retail")
+        self.version_rbs = []
 
         for version_name in GAME_VERSIONS:
             rb = ctk.CTkRadioButton(
-                version_row,
+                self.version_row,
                 text=version_name,
                 variable=self.version_var,
                 value=version_name,
                 font=ctk.CTkFont(family="Segoe UI", size=13),
                 text_color=COLORS["text_primary"],
-                fg_color=COLORS["accent"],
+                fg_color=COLORS["accent"],  # Ink Black
                 hover_color=COLORS["accent_hover"],
-                border_color=COLORS["border_light"],
+                border_color=COLORS["border"],
                 command=self._on_version_change,
             )
             rb.pack(side="left", padx=(0, 24))
+            self.version_rbs.append(rb)
 
         # Version status
         self.version_status = ctk.CTkLabel(
@@ -920,38 +959,41 @@ class WoWFontReplacer(ctk.CTk):
 
         ctk.CTkLabel(
             fonts_header,
-            text="Font Replacements",
-            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            text="Font Replacements".upper(),
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
             text_color=COLORS["text_primary"],
             anchor="w",
         ).pack(side="left")
 
-        # "Apply same font to all" button
+        # "Apply same font to all" button styled as transparent pill with thin border
         self.apply_all_btn = ctk.CTkButton(
             fonts_header,
             text="Apply One Font to All",
             width=160,
-            height=30,
-            corner_radius=8,
+            height=32,
+            corner_radius=16,
             fg_color="transparent",
-            hover_color=COLORS["border"],
+            hover_color=COLORS["bg_card_hover"],
             border_width=1,
             border_color=COLORS["border"],
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=COLORS["text_primary"],
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=self._apply_one_to_all,
         )
         self.apply_all_btn.pack(side="right")
 
         # ===================== FONT SLOT CARDS =====================
+        # Container for responsive grids of cards
+        self.cards_grid_frame = ctk.CTkFrame(container, fg_color="transparent")
+        self.cards_grid_frame.pack(fill="x", padx=28, pady=(12, 0))
+
         for slot_key, slot_info in FONT_SLOTS.items():
-            card = FontSlotCard(container, slot_key, slot_info)
-            card.pack(fill="x", padx=28, pady=(10, 0))
+            card = FontSlotCard(self.cards_grid_frame, slot_key, slot_info)
             self.font_cards[slot_key] = card
 
         # ===================== OPTIONS =====================
         options_frame = ctk.CTkFrame(container, fg_color="transparent")
-        options_frame.pack(fill="x", padx=28, pady=(20, 0))
+        options_frame.pack(fill="x", padx=28, pady=(24, 0))
 
         self.cyrillic_var = ctk.BooleanVar(value=False)
         cyrillic_cb = ctk.CTkCheckBox(
@@ -960,10 +1002,10 @@ class WoWFontReplacer(ctk.CTk):
             variable=self.cyrillic_var,
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_primary"],
-            fg_color=COLORS["accent"],
+            fg_color=COLORS["accent"],  # Ink Black when checked
             hover_color=COLORS["accent_hover"],
-            border_color=COLORS["border_light"],
-            checkmark_color=COLORS["text_primary"],
+            border_color=COLORS["border"],
+            checkmark_color="#ffffff",
         )
         cyrillic_cb.pack(anchor="w")
 
@@ -977,34 +1019,37 @@ class WoWFontReplacer(ctk.CTk):
         cyrillic_note.pack(anchor="w", padx=(28, 0), pady=(2, 0))
 
         # ===================== ACTION BUTTONS =====================
-        action_frame = ctk.CTkFrame(container, fg_color="transparent")
-        action_frame.pack(fill="x", padx=28, pady=(24, 0))
+        self.action_frame = ctk.CTkFrame(container, fg_color="transparent")
+        self.action_frame.pack(fill="x", padx=28, pady=(28, 0))
 
+        # button-primary: Large Ink Black pill button
         self.apply_btn = ctk.CTkButton(
-            action_frame,
-            text="Apply Fonts",
+            self.action_frame,
+            text="APPLY FONTS",
             width=180,
-            height=44,
-            corner_radius=10,
+            height=48,
+            corner_radius=24,  # perfect pill
             fg_color=COLORS["accent"],
             hover_color=COLORS["accent_hover"],
-            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            text_color="#ffffff",
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
             command=self._apply_fonts,
         )
         self.apply_btn.pack(side="left", padx=(0, 12))
 
+        # button-secondary: Soft Cloud button with hairline border
         self.restore_btn = ctk.CTkButton(
-            action_frame,
-            text="Restore Defaults",
-            width=160,
-            height=44,
-            corner_radius=10,
-            fg_color="transparent",
-            hover_color=COLORS["border"],
+            self.action_frame,
+            text="RESTORE DEFAULTS",
+            width=180,
+            height=48,
+            corner_radius=24,  # perfect pill
+            fg_color=COLORS["bg_card"],
+            hover_color=COLORS["bg_card_hover"],
             border_width=1,
-            border_color=COLORS["border_light"],
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(family="Segoe UI", size=14),
+            border_color=COLORS["border"],
+            text_color=COLORS["text_primary"],
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
             command=self._restore_defaults,
         )
         self.restore_btn.pack(side="left")
@@ -1013,11 +1058,11 @@ class WoWFontReplacer(ctk.CTk):
         status_frame = ctk.CTkFrame(
             container,
             fg_color=COLORS["bg_card"],
-            corner_radius=10,
+            corner_radius=0,  # Flat status band
             border_width=1,
-            border_color=COLORS["border"],
+            border_color=COLORS["border_light"],
         )
-        status_frame.pack(fill="x", padx=28, pady=(20, 28))
+        status_frame.pack(fill="x", padx=28, pady=(24, 28))
 
         self.status_icon = ctk.CTkLabel(
             status_frame,
@@ -1036,6 +1081,95 @@ class WoWFontReplacer(ctk.CTk):
             anchor="w",
         )
         self.status_label.pack(side="left", fill="x", expand=True, pady=12)
+
+    def _on_resize(self, event):
+        """Handle window resize to update layout responsiveness."""
+        if event.widget != self:
+            return
+        
+        width = event.width
+        
+        # Prevent excessive calculations
+        if hasattr(self, "_last_width") and abs(self._last_width - width) < 20:
+            return
+        self._last_width = width
+        
+        self._layout_path_section(width)
+        self._layout_version_selector(width)
+        self._layout_cards(width)
+        self._layout_action_buttons(width)
+
+    def _layout_path_section(self, width: int):
+        self.path_entry.pack_forget()
+        self.browse_btn.pack_forget()
+        self.path_entry.grid_forget()
+        self.browse_btn.grid_forget()
+        
+        if width < 550:
+            # Stack vertically on narrow views
+            self.path_row.columnconfigure(0, weight=1)
+            self.path_entry.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+            self.browse_btn.grid(row=1, column=0, sticky="ew")
+        else:
+            self.path_row.columnconfigure(0, weight=0)
+            self.path_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+            self.browse_btn.pack(side="right")
+
+    def _layout_version_selector(self, width: int):
+        for rb in self.version_rbs:
+            rb.pack_forget()
+            rb.grid_forget()
+            
+        if width < 600:
+            # Grid 2x2 on narrow views
+            self.version_row.columnconfigure(0, weight=1)
+            self.version_row.columnconfigure(1, weight=1)
+            self.version_rbs[0].grid(row=0, column=0, sticky="w", pady=4)
+            self.version_rbs[1].grid(row=0, column=1, sticky="w", pady=4)
+            self.version_rbs[2].grid(row=1, column=0, sticky="w", pady=4)
+            self.version_rbs[3].grid(row=1, column=1, sticky="w", pady=4)
+        else:
+            self.version_row.columnconfigure(0, weight=0)
+            self.version_row.columnconfigure(1, weight=0)
+            for rb in self.version_rbs:
+                rb.pack(side="left", padx=(0, 24))
+
+    def _layout_cards(self, width: int):
+        for card in self.font_cards.values():
+            card.pack_forget()
+            card.grid_forget()
+            
+        keys = ["friz", "morpheus", "arialn", "skurri"]
+        if width >= 800:
+            # 2-up responsive grid layout (athletic catalog look)
+            self.cards_grid_frame.columnconfigure(0, weight=1, uniform="cards")
+            self.cards_grid_frame.columnconfigure(1, weight=1, uniform="cards")
+            
+            self.font_cards[keys[0]].grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 16))
+            self.font_cards[keys[1]].grid(row=0, column=1, sticky="ew", padx=(8, 0), pady=(0, 16))
+            self.font_cards[keys[2]].grid(row=1, column=0, sticky="ew", padx=(0, 8), pady=(0, 16))
+            self.font_cards[keys[3]].grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=(0, 16))
+        else:
+            # 1-up vertical stack for compact viewports
+            self.cards_grid_frame.columnconfigure(0, weight=1, uniform="")
+            self.cards_grid_frame.columnconfigure(1, weight=0)
+            for i, key in enumerate(keys):
+                self.font_cards[key].grid(row=i, column=0, sticky="ew", pady=(0, 16))
+
+    def _layout_action_buttons(self, width: int):
+        self.apply_btn.pack_forget()
+        self.restore_btn.pack_forget()
+        self.apply_btn.grid_forget()
+        self.restore_btn.grid_forget()
+        
+        if width < 500:
+            self.action_frame.columnconfigure(0, weight=1)
+            self.apply_btn.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+            self.restore_btn.grid(row=1, column=0, sticky="ew")
+        else:
+            self.action_frame.columnconfigure(0, weight=0)
+            self.apply_btn.pack(side="left", padx=(0, 12))
+            self.restore_btn.pack(side="left")
 
     # ------------------------------------------------------------------
     # Actions
@@ -1099,8 +1233,8 @@ class WoWFontReplacer(ctk.CTk):
 
         ctk.CTkLabel(
             dialog,
-            text="Apply One Font to All Slots",
-            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            text="APPLY ONE FONT TO ALL",
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
             text_color=COLORS["text_primary"],
         ).pack(pady=(20, 8))
 
@@ -1111,7 +1245,7 @@ class WoWFontReplacer(ctk.CTk):
             text_color=COLORS["text_secondary"],
         ).pack(pady=(0, 16))
 
-        # Dropdown
+        # Dropdown styled as a clean pill matching dropdown menu settings
         selected_font = ctk.StringVar(value="Select font...")
         font_menu = ctk.CTkOptionMenu(
             dialog,
@@ -1125,15 +1259,15 @@ class WoWFontReplacer(ctk.CTk):
             ],
             width=260,
             height=36,
-            corner_radius=8,
-            fg_color=COLORS["border"],
-            button_color=COLORS["border_light"],
-            button_hover_color=COLORS["border_light"],
-            dropdown_fg_color=COLORS["bg_card"],
-            dropdown_hover_color=COLORS["border"],
+            corner_radius=18,  # Pill geometry
+            fg_color=COLORS["accent"],
+            button_color=COLORS["accent_hover"],
+            button_hover_color=COLORS["accent_hover"],
+            dropdown_fg_color="#ffffff",
+            dropdown_hover_color=COLORS["bg_card_hover"],
             dropdown_text_color=COLORS["text_primary"],
-            text_color=COLORS["text_primary"],
-            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color="#ffffff",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
         )
         font_menu.pack(pady=(0, 20))
 
@@ -1184,30 +1318,33 @@ class WoWFontReplacer(ctk.CTk):
                     card.clear_btn.configure(state="normal")
                 self._set_status(f"Applied {val} to all slots", "success")
 
+        # Primary black pill
         ctk.CTkButton(
             btn_row,
             text="Apply All",
             width=100,
-            height=34,
-            corner_radius=8,
+            height=36,
+            corner_radius=18,
             fg_color=COLORS["accent"],
             hover_color=COLORS["accent_hover"],
-            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color="#ffffff",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=_do_apply_all,
         ).pack(side="left", padx=(0, 8))
 
+        # Secondary white/border pill
         ctk.CTkButton(
             btn_row,
             text="Cancel",
             width=80,
-            height=34,
-            corner_radius=8,
+            height=36,
+            corner_radius=18,
             fg_color="transparent",
-            hover_color=COLORS["border"],
+            hover_color=COLORS["bg_card_hover"],
             border_width=1,
             border_color=COLORS["border"],
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color=COLORS["text_primary"],
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=dialog.destroy,
         ).pack(side="left")
 
@@ -1265,8 +1402,8 @@ class WoWFontReplacer(ctk.CTk):
 
         ctk.CTkLabel(
             confirm,
-            text="Restore Default Fonts?",
-            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            text="RESTORE DEFAULT FONTS?",
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
             text_color=COLORS["text_primary"],
         ).pack(pady=(28, 8))
 
@@ -1293,30 +1430,33 @@ class WoWFontReplacer(ctk.CTk):
                 self._set_status(msg, "error")
             self._on_version_change()
 
+        # Destructive action: Red Sale pill button
         ctk.CTkButton(
             btn_row,
             text="Restore Defaults",
             width=140,
             height=36,
-            corner_radius=8,
-            fg_color=COLORS["accent"],
-            hover_color=COLORS["accent_hover"],
-            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            corner_radius=18,  # Pill geometry
+            fg_color=COLORS["error"],  # Sale Red
+            hover_color="#a80003",
+            text_color="#ffffff",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=_do_restore,
         ).pack(side="left", padx=(0, 8))
 
+        # Secondary white/border pill
         ctk.CTkButton(
             btn_row,
             text="Cancel",
             width=90,
             height=36,
-            corner_radius=8,
+            corner_radius=18,  # Pill geometry
             fg_color="transparent",
-            hover_color=COLORS["border"],
+            hover_color=COLORS["bg_card_hover"],
             border_width=1,
             border_color=COLORS["border"],
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color=COLORS["text_primary"],
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=confirm.destroy,
         ).pack(side="left")
 
