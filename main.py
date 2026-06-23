@@ -11,6 +11,7 @@ import sys
 import shutil
 import ctypes
 import json
+import webbrowser
 import tkinter as tk
 from tkinter import filedialog, font as tkfont
 from pathlib import Path
@@ -351,6 +352,35 @@ class FontManager:
             target_path = fonts_dir / slot["target"]
             result[slot_key] = target_path.exists()
         return result
+
+    @staticmethod
+    def has_game_exe(wow_path: str, version_subfolder: str) -> bool:
+        """Check if a WoW executable exists for the selected version."""
+        base = Path(wow_path)
+        exes = ["Wow.exe", "wow.exe", "WowClassic.exe", "wowclassic.exe"]
+        target_dir = base if not version_subfolder else base / version_subfolder
+        if not target_dir.is_dir():
+            return False
+        return any((target_dir / exe).is_file() for exe in exes)
+
+    @staticmethod
+    def launch_game(wow_path: str, version_subfolder: str) -> bool:
+        """Attempt to launch the World of Warcraft executable for the selected version."""
+        import subprocess
+        base = Path(wow_path)
+        exes = ["Wow.exe", "wow.exe", "WowClassic.exe", "wowclassic.exe"]
+        target_dir = base if not version_subfolder else base / version_subfolder
+        if not target_dir.is_dir():
+            return False
+        for exe in exes:
+            exe_path = target_dir / exe
+            if exe_path.is_file():
+                try:
+                    subprocess.Popen(str(exe_path), cwd=str(target_dir))
+                    return True
+                except Exception:
+                    pass
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -778,6 +808,138 @@ class FontSlotCard(ctk.CTkFrame):
 
 
 # ---------------------------------------------------------------------------
+# SuccessDialog — Modern confirmation and support window
+# ---------------------------------------------------------------------------
+
+class SuccessDialog(ctk.CTkToplevel):
+    """A premium, high-conversion success and support popup."""
+
+    def __init__(self, master, wow_path: str, version_subfolder: str, **kwargs):
+        super().__init__(master, fg_color=COLORS["bg_dark"], **kwargs)
+
+        self.wow_path = wow_path
+        self.version_subfolder = version_subfolder
+
+        self.title("Success")
+        self.geometry("520x330")
+        self.resizable(False, False)
+        self.grab_set()
+        self.transient(master)
+
+        # Center on parent window
+        self.update_idletasks()
+        parent_x = master.winfo_x()
+        parent_y = master.winfo_y()
+        parent_width = master.winfo_width()
+        parent_height = master.winfo_height()
+        
+        x = parent_x + (parent_width - 520) // 2
+        y = parent_y + (parent_height - 330) // 2
+        self.geometry(f"520x330+{x}+{y}")
+
+        # Celebratory Banner / Header
+        header_frame = ctk.CTkFrame(self, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(28, 6))
+
+        ctk.CTkLabel(
+            header_frame,
+            text="AZEROTH AWAITS! 🚀",
+            font=ctk.CTkFont(family="Segoe UI", size=22, weight="bold"),
+            text_color=COLORS["success"],
+        ).pack()
+
+        ctk.CTkLabel(
+            header_frame,
+            text="Fonts Installed Successfully",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=COLORS["text_secondary"],
+        ).pack(pady=(2, 0))
+
+        # Main message
+        msg_frame = ctk.CTkFrame(self, fg_color=COLORS["bg_card"], corner_radius=0)
+        msg_frame.pack(fill="both", expand=True, padx=28, pady=(12, 20))
+
+        ctk.CTkLabel(
+            msg_frame,
+            text=(
+                "Your user interface has been upgraded with clean, readable fonts!\n\n"
+                "WoW Font Replacer is a free, open-source utility made with love by ZenDevve. "
+                "If this tool helps your eyes, reduces reading fatigue, or makes your adventures "
+                "in Azeroth more enjoyable, please consider supporting future updates with a coffee."
+            ),
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=COLORS["text_primary"],
+            wraplength=440,
+            justify="center",
+        ).pack(expand=True, padx=20, pady=16)
+
+        # Button Row
+        btn_row = ctk.CTkFrame(self, fg_color="transparent")
+        btn_row.pack(fill="x", padx=28, pady=(0, 28))
+
+        # Buy Me a Coffee button - Brand Yellow with black text (highly recognizable)
+        self.coffee_btn = ctk.CTkButton(
+            btn_row,
+            text="Buy Me a Coffee ☕",
+            width=170,
+            height=40,
+            corner_radius=20,
+            fg_color="#FFDD00",
+            hover_color="#ebd600",
+            text_color="#000000",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            command=self._open_coffee,
+        )
+        self.coffee_btn.pack(side="left", padx=(0, 8))
+
+        # Launch Game button
+        has_exe = FontManager.has_game_exe(self.wow_path, self.version_subfolder)
+        self.launch_btn = ctk.CTkButton(
+            btn_row,
+            text="Launch WoW 🎮",
+            width=150,
+            height=40,
+            corner_radius=20,
+            fg_color=COLORS["accent"],
+            hover_color=COLORS["accent_hover"],
+            text_color="#ffffff",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            command=self._launch_game,
+            state="normal" if has_exe else "disabled",
+        )
+        self.launch_btn.pack(side="left", padx=(0, 8))
+
+        # Close button
+        self.close_btn = ctk.CTkButton(
+            btn_row,
+            text="Done",
+            width=100,
+            height=40,
+            corner_radius=20,
+            fg_color="transparent",
+            hover_color=COLORS["bg_card_hover"],
+            border_width=1,
+            border_color=COLORS["border"],
+            text_color=COLORS["text_primary"],
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            command=self.destroy,
+        )
+        self.close_btn.pack(side="right")
+
+    def _open_coffee(self):
+        """Open Buy Me a Coffee page in web browser."""
+        try:
+            webbrowser.open("https://buymeacoffee.com/zendevve")
+        except Exception:
+            pass
+
+    def _launch_game(self):
+        """Launch the game client and close dialog."""
+        FontManager.launch_game(self.wow_path, self.version_subfolder)
+        self.destroy()
+
+
+# ---------------------------------------------------------------------------
 # Main Application Window
 # ---------------------------------------------------------------------------
 
@@ -1054,6 +1216,59 @@ class WoWFontReplacer(ctk.CTk):
         )
         self.restore_btn.pack(side="left")
 
+        # ===================== COFFEE BANNER =====================
+        self.coffee_banner = ctk.CTkFrame(
+            container,
+            fg_color="#fbf7ed",      # Warm latte ivory background
+            corner_radius=0,         # Sharp edges to match Nike theme
+            border_width=1,
+            border_color="#ebdcb9",  # Soft warm gold border
+        )
+        self.coffee_banner.pack(fill="x", padx=28, pady=(24, 0))
+
+        # Horizontal layout inside coffee banner
+        self.coffee_layout = ctk.CTkFrame(self.coffee_banner, fg_color="transparent")
+        self.coffee_layout.pack(fill="x", padx=20, pady=16)
+
+        # Text subframe for layout control
+        self.coffee_text_frame = ctk.CTkFrame(self.coffee_layout, fg_color="transparent")
+        self.coffee_text_frame.pack(side="left", fill="both", expand=True)
+
+        self.coffee_title = ctk.CTkLabel(
+            self.coffee_text_frame,
+            text="SUPPORT THE CREATOR",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=COLORS["text_primary"],
+            anchor="w",
+        )
+        self.coffee_title.pack(anchor="w")
+
+        self.coffee_desc = ctk.CTkLabel(
+            self.coffee_text_frame,
+            text="WoW Font Replacer is a free, open-source passion project. If it has made your adventures in Azeroth easier on your eyes, consider buying the developer a coffee to support future updates.",
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=COLORS["text_secondary"],
+            anchor="w",
+            justify="left",
+            wraplength=520,
+        )
+        self.coffee_desc.pack(anchor="w", pady=(4, 0))
+
+        # Button styled as a gorgeous brand pill
+        self.coffee_banner_btn = ctk.CTkButton(
+            self.coffee_layout,
+            text="Buy Me a Coffee ☕",
+            width=160,
+            height=36,
+            corner_radius=18,  # Pill geometry
+            fg_color="#FFDD00",
+            hover_color="#ebd600",
+            text_color="#000000",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            command=self._open_coffee,
+        )
+        self.coffee_banner_btn.pack(side="right", padx=(12, 0))
+
         # ===================== STATUS BAR =====================
         status_frame = ctk.CTkFrame(
             container,
@@ -1098,6 +1313,7 @@ class WoWFontReplacer(ctk.CTk):
         self._layout_version_selector(width)
         self._layout_cards(width)
         self._layout_action_buttons(width)
+        self._layout_coffee_banner(width)
 
     def _layout_path_section(self, width: int):
         self.path_entry.pack_forget()
@@ -1170,6 +1386,25 @@ class WoWFontReplacer(ctk.CTk):
             self.action_frame.columnconfigure(0, weight=0)
             self.apply_btn.pack(side="left", padx=(0, 12))
             self.restore_btn.pack(side="left")
+
+    def _layout_coffee_banner(self, width: int):
+        self.coffee_text_frame.pack_forget()
+        self.coffee_banner_btn.pack_forget()
+        self.coffee_text_frame.grid_forget()
+        self.coffee_banner_btn.grid_forget()
+        
+        if width < 680:
+            # Vertical stack for narrow screen
+            self.coffee_layout.columnconfigure(0, weight=1)
+            self.coffee_desc.configure(wraplength=width - 100)
+            self.coffee_text_frame.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+            self.coffee_banner_btn.grid(row=1, column=0, sticky="w")
+        else:
+            # Horizontal row layout for wider screen
+            self.coffee_layout.columnconfigure(0, weight=0)
+            self.coffee_desc.configure(wraplength=width - 260)
+            self.coffee_text_frame.pack(side="left", fill="both", expand=True)
+            self.coffee_banner_btn.pack(side="right", padx=(12, 0))
 
     # ------------------------------------------------------------------
     # Actions
@@ -1375,6 +1610,7 @@ class WoWFontReplacer(ctk.CTk):
 
         if success:
             self._set_status(msg, "success")
+            SuccessDialog(self, wow_path, version_subfolder)
         else:
             self._set_status(msg, "error")
 
@@ -1459,6 +1695,13 @@ class WoWFontReplacer(ctk.CTk):
             font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             command=confirm.destroy,
         ).pack(side="left")
+
+    def _open_coffee(self):
+        """Open Buy Me a Coffee page in default web browser."""
+        try:
+            webbrowser.open("https://buymeacoffee.com/zendevve")
+        except Exception:
+            pass
 
     def _set_status(self, message: str, level: str = "info"):
         """Update the status bar."""

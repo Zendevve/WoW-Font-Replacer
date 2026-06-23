@@ -87,6 +87,14 @@ git push origin v1.0.0
 
 ---
 
+## Support & Donations
+
+If WoW Font Replacer has improved your eye comfort, accessibility, or overall game experience, please consider supporting future development by buying me a coffee! Even a small tip is a huge motivator.
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/zendevve)
+
+---
+
 ## Licensing
 
 - **Lexend:** SIL Open Font License (OFL)
